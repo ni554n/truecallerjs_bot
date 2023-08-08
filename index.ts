@@ -5,8 +5,8 @@ import type {
 } from "https://deno.land/x/grammy_types@v3.1.2/mod.ts";
 import {
   login,
-  verifyOtp,
   search,
+  verifyOtp,
   type LoginResponse,
 } from "https://esm.sh/truecallerjs@2.1.5";
 
@@ -70,7 +70,7 @@ Deno.serve(
       return new Response();
     }
 
-    if (!message) return new Response();
+    if (!message?.text) return new Response();
 
     tgChatId = message.chat.id;
 
@@ -132,7 +132,10 @@ Deno.serve(
       );
     }
 
-    if (kvValue.status === "awaiting_phone_no") {
+    if (
+      kvValue.status === "awaiting_phone_no" &&
+      !message.text.startsWith("/")
+    ) {
       const phoneNumber = message.text;
 
       if (!phoneNumber?.startsWith("+")) {
@@ -168,8 +171,8 @@ Deno.serve(
       return sendTgMessage("Enter the OTP from SMS or WhatsApp:");
     }
 
-    if (kvValue.status === "awaiting_otp") {
-      const otp = message.text ?? "";
+    if (kvValue.status === "awaiting_otp" && !message.text.startsWith("/")) {
+      const otp = message.text;
 
       const otpResponse = (await verifyOtp(
         kvValue.phoneNumber,
@@ -217,7 +220,7 @@ Deno.serve(
     }
 
     const searchData = {
-      number: message.text ?? "",
+      number: message.text,
       countryCode: kvValue.countryCode,
       installationId: kvValue.installationId,
     };
