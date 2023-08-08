@@ -13,6 +13,15 @@ import {
 type BotParams<METHOD extends keyof ApiMethods<unknown>> =
   Opts<unknown>[METHOD] & { method: METHOD };
 
+type BotCommand =
+  | "/start"
+  | "/login"
+  | "/installation_id"
+  | "/logout"
+  | "/stop"
+  | "/info"
+  | "/search";
+
 let tgChatId: number | undefined;
 
 /**
@@ -89,9 +98,7 @@ Deno.serve(
       status: "logged_out",
     };
 
-    /* ↓ Bot Commands ↓ */
-
-    if (message.text === "/start") {
+    if ((message.text as BotCommand) === "/start") {
       if (kvValue.status === "logged_out") reportEvent("/start");
 
       return sendTgMessage(
@@ -99,7 +106,7 @@ Deno.serve(
       );
     }
 
-    if (message.text === "/logout") {
+    if ((message.text as BotCommand) === "/logout") {
       await kv.delete(chatIdKey);
 
       reportEvent("/logout");
@@ -107,7 +114,9 @@ Deno.serve(
       return sendTgMessage("You've been logged out");
     }
 
-    if (message.text === "/login") {
+    //#region Command: /login
+
+    if ((message.text as BotCommand) === "/login") {
       if (kvValue.status === "logged_in") {
         return sendTgMessage(
           "You are already logged in. /logout first and then try /login again.",
@@ -200,6 +209,8 @@ Deno.serve(
         "Successfully logged in to Truecaller.\nYou can now search any number.",
       );
     }
+
+    //#endregion /login
 
     if (kvValue.status !== "logged_in") {
       return sendTgMessage("Please /login first before searching for a number");
@@ -298,9 +309,7 @@ function reportError(error: Error): void {
   ).catch(console.error);
 }
 
-function reportEvent(
-  eventName: "/start" | "/login" | "/logout" | "/stop" | "/search",
-): void {
+function reportEvent(eventName: BotCommand): void {
   fetch(Deno.env.get("EVENT_PING_URL") ?? "", {
     method: "POST",
     headers: {
