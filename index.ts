@@ -3,7 +3,6 @@ import type {
   Opts,
   Update,
 } from "https://deno.land/x/grammy_types@v3.1.2/mod.ts";
-import { escapeMarkdown } from "https://esm.sh/telegram-escape@1.1.1";
 import {
   login,
   verifyOtp,
@@ -29,16 +28,17 @@ Deno.serve(
     onError(error: any): Response {
       let message: string | undefined;
 
-      if (error.name === "AxiosError" && "response" in error) {
-        message = error.response?.data?.message ?? "Enter a valid number";
-
-        console.error(error);
-      } else {
+      if (error?.name === "AxiosError" && "response" in error) {
         message =
-          "Internal server error.\nIt's been reported and will be fixed as soon as possible.";
+          error?.response?.data?.message || "Try again with a valid number.";
+      } else {
+        const reason =
+          error instanceof Error ? `\nReason: ${error.message}` : "";
 
-        reportError(error);
+        message = `Internal server error!${reason}\nIt's been reported and will be fixed if possible.`;
       }
+
+      reportError(error);
 
       return message ? sendTgMessage(message) : new Response();
     },
@@ -262,20 +262,27 @@ function reportError(error: Error): void {
 
   if (error.name === "AxiosError" && "response" in error) {
     // deno-lint-ignore no-explicit-any
-    const response = error.response as any;
+    const { config = {}, data = {} } = error.response as any;
 
-    details = `🔗 ${response?.config?.url}\n\n📤 ${JSON.stringify(
-      response?.config?.data ?? response?.config?.params,
-      null,
-      2,
-    )}\n\n📥 ${JSON.stringify(response.data, null, 2)}`;
+    const url = config.url ?? "";
+    const params = JSON.stringify(config.params ?? {}, null, 2);
+    const requestData = JSON.stringify(config.data ?? {}, null, 2);
+    const responseData = JSON.stringify(data, null, 2);
+
+    details = `url: ${url}\n\nparams: ${params}\n\nreq_data: ${requestData}\n\nres_data: ${responseData}`;
   } else {
-    details = `📜 ${error.stack}`;
+    details = `${error.stack}`;
   }
+
+  // Telegram formatting rule:
+  // https://core.telegram.org/bots/api#markdownv2-style
+  details = `${error.name}: ${error.message}\n\n${details}`
+    .replaceAll("\\", "\\\\")
+    .replaceAll("`", "\\`");
 
   fetch(
     `https://api.telegram.org/bot${Deno.env.get(
-      "TG_REPORT_BOT_TOKEN",
+      "TG_THIS_BOT_TOKEN",
     )}/sendMessage`,
     {
       method: "POST",
@@ -283,13 +290,9 @@ function reportError(error: Error): void {
         "Content-Type": "application/json",
       },
       body: JSON.stringify({
-        chat_id: Deno.env.get("TG_REPORT_BOT_CHAT_ID"),
+        chat_id: Deno.env.get("TG_REPORT_CHANNEL_ID"),
         parse_mode: "MarkdownV2",
-        text: `@truecallerjs\\_bot:\n${escapeMarkdown(
-          error.message,
-        )}\n\n${"```"}\n${details
-          // .replaceAll("\\", "\\\\") // Skipping it intentionally
-          .replaceAll("`", "\\`")}\n${"```"}`,
+        text: `${"```"}\n${details}\n${"```"}`,
       }),
     },
   ).catch(console.error);
