@@ -106,6 +106,29 @@ Deno.serve(
       );
     }
 
+    if ((message.text as BotCommand) === "/info") {
+      let status: string;
+      let installationId: string | undefined;
+
+      if (kvValue.status === "logged_in") {
+        status = "Logged in";
+        installationId = kvValue.installationId;
+      } else {
+        status = "Logged out";
+      }
+
+      status = `*Status:* ${status}`;
+
+      installationId = installationId
+        ? `\n[Installation ID:](https://github.com/sumithemmadi/truecallerjs#simple-example) \`${installationId}\``
+        : "";
+
+      const about =
+        "[Source Code](https://github.com/ni554n/truecallerjs_bot) *\\|* [anissan\\.com](https://anissan.com)";
+
+      return sendTgMessage(`${status}${installationId}\n\n${about}`, true);
+    }
+
     if ((message.text as BotCommand) === "/logout") {
       await kv.delete(chatIdKey);
 
@@ -237,11 +260,13 @@ Deno.serve(
   },
 );
 
-function sendTgMessage(text: string) {
+function sendTgMessage(text: string, formatted = false) {
   return new Response(
     JSON.stringify({
       method: "sendMessage",
       chat_id: tgChatId!,
+      parse_mode: formatted ? "MarkdownV2" : undefined,
+      disable_web_page_preview: true,
       text,
     } satisfies BotParams<"sendMessage">),
     {
