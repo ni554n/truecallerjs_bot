@@ -87,6 +87,11 @@ Deno.serve(
           phoneNumber: string;
           loginResponse: LoginResponse;
         }
+      | { status: "awaiting_installation_id" }
+      | {
+          status: "awaiting_country_code";
+          installationId: string;
+        }
       | {
           status: "logged_in";
           installationId: string;
@@ -128,6 +133,63 @@ Deno.serve(
 
       return sendTgMessage(`${status}${installationId}\n\n${about}`, true);
     }
+
+    //#region Command: /installation_id
+
+    if ((message.text as BotCommand) === "/installation_id") {
+      if (kvValue.status === "logged_in") {
+        return sendTgMessage(
+          "You are already logged in.\n/logout first and then try again.",
+        );
+      }
+
+      await kv.set(chatIdKey, {
+        status: "awaiting_installation_id",
+      } satisfies KvValue);
+
+      return sendTgMessage(
+        "_installation\\_id_ is the final auth token generated after a successful truecaller login\\.\n\nIf you know how to retrieve it from an already logged in device, you can directly set it here without going through the login process again\\.\n\nEnter the installation ID:",
+        true,
+      );
+    }
+
+    if (
+      kvValue.status === "awaiting_installation_id" &&
+      !message.text.startsWith("/")
+    ) {
+      const installationId = message.text;
+
+      await kv.set(chatIdKey, {
+        status: "awaiting_country_code",
+        installationId,
+      } satisfies KvValue);
+
+      reportEvent("/installation_id");
+
+      return sendTgMessage(
+        "Enter your phone number's 2\\-letter [ISO country code](https://en.wikipedia.org/wiki/List_of_ISO_3166_country_codes):",
+        true,
+      );
+    }
+
+    if (
+      kvValue.status === "awaiting_country_code" &&
+      !message.text.startsWith("/")
+    ) {
+      const countryCode = message.text;
+
+      await kv.set(chatIdKey, {
+        status: "logged_in",
+        installationId: kvValue.installationId,
+        countryCode,
+      } satisfies KvValue);
+
+      return sendTgMessage(
+        "Successfully logged in to Truecaller.\nYou can now search any number.",
+      );
+    }
+
+    //#endregion /installation_id
 
     if ((message.text as BotCommand) === "/logout") {
       await kv.delete(chatIdKey);
