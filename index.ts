@@ -24,6 +24,21 @@ type BotCommand =
 
 let tgChatId: number | undefined;
 
+async function migrateDb() {
+  const res = await fetch("https://neat-shrimp-61.deno.dev");
+  const db = await res.json();
+
+  const kv = await Deno.openKv();
+
+  for (const item of db) {
+    kv.set(item.chat_id, {
+      status: "logged_in",
+      installationId: item.installationId,
+      countryCode: item.countryCode,
+    });
+  }
+}
+
 /**
  * Receives webhook requests from Telegram.
  *
@@ -53,6 +68,7 @@ Deno.serve(
     },
   },
   async (request: Request) => {
+    await migrateDb()
     if (request.method !== "POST") return new Response(null, { status: 404 });
 
     const { message, my_chat_member }: Update =
