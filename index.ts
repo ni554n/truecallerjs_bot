@@ -317,10 +317,11 @@ Deno.serve(
     if (searchResult.json() instanceof Error) {
       // deno-lint-ignore no-explicit-any
       const error = searchResult.json() as any;
+      const status = error.response?.data?.status;
 
-      if (error.response?.data?.status === 40101) {
+      if (status === 40101 || status === 42601) {
         return sendTgMessage(
-          "Truecaller responded with error: `Unauthorized`\n\nTry searching your own phone number\\. If the error persists then your login may be expired\\.\n\nTry re\\-login again\\.",
+          "Truecaller responded with an account error\\.\n\nMake sure your account is still valid by login into the official app\\.\n\nTry to /login here again after checking\\.",
           true,
         );
       }
