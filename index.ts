@@ -314,7 +314,19 @@ Deno.serve(
 
     // TruecallerJS wraps the Axios error instead of throwing it:
     // https://github.com/sumithemmadi/truecallerjs/blob/4a89a9ed71429900f60653291de4c64cc8fd50ab/src/search.ts#L204
-    if (searchResult.json() instanceof Error) throw searchResult.json();
+    if (searchResult.json() instanceof Error) {
+      // deno-lint-ignore no-explicit-any
+      const error = searchResult.json() as any;
+
+      if (error.response?.data?.status === 40101) {
+        return sendTgMessage(
+          "Truecaller responded with error: `Unauthorized`\n\nTry searching your own phone number\\. If the error persists then your login may be expired\\.\n\nTry re\\-login again\\.",
+          true,
+        );
+      }
+
+      throw searchResult.json();
+    }
 
     reportEvent("/search");
 
