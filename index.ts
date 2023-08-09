@@ -8,7 +8,7 @@ import {
   search,
   verifyOtp,
   type LoginResponse,
-} from "https://esm.sh/truecallerjs@2.1.5";
+} from "https://esm.sh/truecallerjs@2.2.0";
 
 type BotParams<METHOD extends keyof ApiMethods<unknown>> =
   Opts<unknown>[METHOD] & { method: METHOD };
