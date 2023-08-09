@@ -31,7 +31,9 @@ async function migrateDb() {
   const kv = await Deno.openKv();
 
   for (const item of db) {
-    kv.set(item.chat_id, {
+    const chatIdKey: [string, number] = ["users", item.chat_id];
+
+    kv.set(chatIdKey, {
       status: "logged_in",
       installationId: item.installationId,
       countryCode: item.countryCode,
