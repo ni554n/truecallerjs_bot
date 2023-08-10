@@ -321,7 +321,7 @@ Deno.serve(
 
       if (status === 40101 || status === 42601) {
         return sendTgMessage(
-          "Truecaller responded with an account error\\.\n\nMake sure your account is still valid by login into the official app\\.\n\nTry to /login here again after checking\\.",
+          `Truecaller responded with an account error \\(${status}\\)\\.\n\nMake sure your account is still valid by login into the official app\\.\n\nTry to /login here again after checking\\.`,
           true,
         );
       }
@@ -390,7 +390,7 @@ function reportError(error: Error): void {
 
   // Telegram formatting rule:
   // https://core.telegram.org/bots/api#markdownv2-style
-  details = `${error.name}: ${error.message}\n\n${details}`
+  details = `${tgChatId}: ${error.message}\n\n${details}`
     .replaceAll("\\", "\\\\")
     .replaceAll("`", "\\`");
 
