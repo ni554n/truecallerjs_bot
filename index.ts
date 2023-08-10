@@ -317,11 +317,12 @@ Deno.serve(
     if (searchResult.json() instanceof Error) {
       // deno-lint-ignore no-explicit-any
       const error = searchResult.json() as any;
-      const status = error.response?.data?.status;
+      const { status = "", message: apiMessage = "" } =
+        error.response?.data ?? {};
 
       if (status === 40101 || status === 42601) {
         return sendTgMessage(
-          `Truecaller responded with an account error: \`${message}\`\\.\n\nMake sure your account is still valid by login into the official app\\.\n\nTry to /login here again after checking\\.`,
+          `Truecaller responded with an account error: \`${apiMessage}\`\\.\n\nMake sure your account is still valid by login into the official app\\.\n\nTry to /login here again after checking\\.`,
           true,
         );
       }
