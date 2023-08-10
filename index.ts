@@ -321,7 +321,7 @@ Deno.serve(
 
       if (status === 40101 || status === 42601) {
         return sendTgMessage(
-          `Truecaller responded with an account error \\(${status}\\)\\.\n\nMake sure your account is still valid by login into the official app\\.\n\nTry to /login here again after checking\\.`,
+          `Truecaller responded with an account error: \`${message}\`\\.\n\nMake sure your account is still valid by login into the official app\\.\n\nTry to /login here again after checking\\.`,
           true,
         );
       }
