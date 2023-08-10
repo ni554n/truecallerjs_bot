@@ -2,9 +2,8 @@
 
 A Telegram bot that uses an unofficial Truecaller API to look up phone number information instantly. It's an alternative for occasional use of Truecaller than running their app in background all the time.
 
-<div align="center"><img src=".doc/marquee.png" /></div>
-
-This bot is based on the [sumithemmadi/truecallerjs](https://github.com/sumithemmadi/truecallerjs) library and is live at [t.me/truecallerjs_bot](https://t.me/truecallerjs_bot).
+<br>
+<div align="center"><img src=".doc/marquee.png" /><br>This bot is based on the <a href="https://github.com/sumithemmadi/truecallerjs">sumithemmadi/truecallerjs</a> library and is live at <a href="https://t.me/truecallerjs_bot">@truecallerjs_bot</a></div>
 
 ## Self-host
 
