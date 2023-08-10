@@ -233,7 +233,7 @@ Deno.serve(
 
       if (responseBody.status === 6 || responseBody.status === 5) {
         return sendTgMessage(
-          `You have exceeded the limit of verification attempts.\nPlease try again after some time.\n\n${JSON.stringify(responseBody)}`,
+          "You have exceeded the limit of verification attempts.\nPlease try again after some time (up to 24h).",
         );
       }
 
