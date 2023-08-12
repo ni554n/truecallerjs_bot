@@ -373,6 +373,13 @@ function sendTypingIndicator(): void {
 
 // Completely optional. Just for me to error logging and debugging.
 function reportError(error: Error): void {
+  const TG_REPORT_CHANNEL_ID = Deno.env.get("TG_REPORT_CHANNEL_ID");
+
+  if (!TG_REPORT_CHANNEL_ID) {
+    console.warn("Optional env var 'TG_REPORT_CHANNEL_ID' is not set.");
+    return;
+  }
+
   let details: string;
 
   if (error.name === "AxiosError" && "response" in error) {
@@ -405,7 +412,7 @@ function reportError(error: Error): void {
         "Content-Type": "application/json",
       },
       body: JSON.stringify({
-        chat_id: Deno.env.get("TG_REPORT_CHANNEL_ID"),
+        chat_id: TG_REPORT_CHANNEL_ID,
         parse_mode: "MarkdownV2",
         text: `${"```"}\n${details}\n${"```"}`,
       }),
@@ -414,7 +421,15 @@ function reportError(error: Error): void {
 }
 
 function reportEvent(eventName: BotCommand): void {
-  fetch(Deno.env.get("EVENT_PING_URL") ?? "", {
+  const EVENT_PING_URL = Deno.env.get("EVENT_PING_URL");
+  const EVENT_PING_PROJECT_ID = Deno.env.get("EVENT_PING_PROJECT_ID");
+
+  if (!(EVENT_PING_URL && EVENT_PING_PROJECT_ID)) {
+    console.warn("Optional env vars 'EVENT_PING_*' are not set.");
+    return;
+  }
+
+  fetch(EVENT_PING_URL, {
     method: "POST",
     headers: {
       "User-Agent": "telegram (@;truecallerjs)",
