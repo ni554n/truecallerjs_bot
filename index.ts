@@ -432,7 +432,7 @@ function reportEvent(eventName: BotCommand): void {
   fetch(EVENT_PING_URL, {
     method: "POST",
     headers: {
-      "User-Agent": "telegram (@;truecallerjs)",
+      "User-Agent": "telegram (truecallerjs;)",
       "Content-Type": "application/json",
     },
     body: JSON.stringify({
