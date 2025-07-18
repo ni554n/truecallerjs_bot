@@ -5,9 +5,7 @@ A Telegram bot that uses an unofficial Truecaller API to look up phone number in
 <br>
 <div align="center"><img src=".doc/marquee.png" /><br>This bot is based on the <a href="https://github.com/sumithemmadi/truecallerjs">sumithemmadi/truecallerjs</a> library and is live at <a href="https://t.me/truecallerjs_bot">@truecallerjs_bot</a></div>
 
-## Self-host
-
-This is a Deno project currently deployed on Deno Deploy. It uses Deno KV which requires you to [join the waitlist](https://dash.deno.com/kv) first before you get access to it.
+## Host
 
 ### Setup Telegram Bot
 
@@ -18,7 +16,7 @@ This is a Deno project currently deployed on Deno Deploy. It uses Deno KV which 
    login - Login to Truecaller
    installation_id - Login via existing token
    logout - Logout from Truecaller
-   info - Information about the bot
+   info - Information about the bot & installation_id
    ```
 
 3. [Set the webhook URL](https://core.telegram.org/bots/api#setwebhook) after deploying the bot using the following procedure.
