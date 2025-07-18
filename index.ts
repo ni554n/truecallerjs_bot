@@ -2,16 +2,17 @@ import type {
   ApiMethods,
   Opts,
   Update,
-} from "https://deno.land/x/grammy_types@v3.1.2/mod.ts";
+} from "https://deno.land/x/grammy_types@v3.21.0/mod.ts";
 import {
   login,
+  type LoginResponse,
   search,
   verifyOtp,
-  type LoginResponse,
-} from "https://esm.sh/truecallerjs@2.2.0";
+} from "npm:truecallerjs@2.2.0";
 
 type BotParams<METHOD extends keyof ApiMethods<unknown>> =
-  Opts<unknown>[METHOD] & { method: METHOD };
+  & Opts<unknown>[METHOD]
+  & { method: METHOD };
 
 type BotCommand =
   | "/start"
@@ -38,13 +39,15 @@ Deno.serve(
       let message: string | undefined;
 
       if (error?.name === "AxiosError" && "response" in error) {
-        message =
-          error?.response?.data?.message || "Try again with a valid number.";
+        message = error?.response?.data?.message ||
+          "Try again with a valid number.";
       } else {
-        const reason =
-          error instanceof Error ? `\nReason: ${error.message}` : "";
+        const reason = error instanceof Error
+          ? `\nReason: ${error.message}`
+          : "";
 
-        message = `Internal server error!${reason}\nIt's been reported and will be fixed if possible.`;
+        message =
+          `Internal server error!${reason}\nIt's been reported and will be fixed if possible.`;
       }
 
       reportError(error);
@@ -83,20 +86,20 @@ Deno.serve(
     type KvValue =
       | { status: "awaiting_phone_no" }
       | {
-          status: "awaiting_otp";
-          phoneNumber: string;
-          loginResponse: LoginResponse;
-        }
+        status: "awaiting_otp";
+        phoneNumber: string;
+        loginResponse: LoginResponse;
+      }
       | { status: "awaiting_installation_id" }
       | {
-          status: "awaiting_country_code";
-          installationId: string;
-        }
+        status: "awaiting_country_code";
+        installationId: string;
+      }
       | {
-          status: "logged_in";
-          installationId: string;
-          countryCode: string;
-        }
+        status: "logged_in";
+        installationId: string;
+        countryCode: string;
+      }
       | { status: "logged_out" };
 
     const kvValue: KvValue = (await kv.get<KvValue>(chatIdKey)).value ?? {
@@ -134,71 +137,6 @@ Deno.serve(
       return sendTgMessage(`${status}${installationId}\n\n${about}`, true);
     }
 
-    //#region Command: /installation_id
-
-    if ((message.text as BotCommand) === "/installation_id") {
-      if (kvValue.status === "logged_in") {
-        return sendTgMessage(
-          "You are already logged in.\n/logout first and then try again.",
-        );
-      }
-
-      await kv.set(chatIdKey, {
-        status: "awaiting_installation_id",
-      } satisfies KvValue);
-
-      return sendTgMessage(
-        "_installation\\_id_ is the final auth token generated after a successful truecaller login\\.\n\nIf you know how to retrieve it from an already logged in device, you can directly set it here without going through the login process again\\.\n\nEnter the installation ID:",
-        true,
-      );
-    }
-
-    if (
-      kvValue.status === "awaiting_installation_id" &&
-      !message.text.startsWith("/")
-    ) {
-      const installationId = message.text;
-
-      await kv.set(chatIdKey, {
-        status: "awaiting_country_code",
-        installationId,
-      } satisfies KvValue);
-
-      reportEvent("/installation_id");
-
-      return sendTgMessage(
-        "Enter your phone number's 2\\-letter [ISO country code](https://en.wikipedia.org/wiki/List_of_ISO_3166_country_codes):",
-        true,
-      );
-    }
-
-    if (
-      kvValue.status === "awaiting_country_code" &&
-      !message.text.startsWith("/")
-    ) {
-      const countryCode = message.text;
-
-      await kv.set(chatIdKey, {
-        status: "logged_in",
-        installationId: kvValue.installationId,
-        countryCode,
-      } satisfies KvValue);
-
-      return sendTgMessage(
-        "Successfully logged in to Truecaller.\nYou can now search any number.",
-      );
-    }
-
-    //#endregion /installation_id
-
-    if ((message.text as BotCommand) === "/logout") {
-      await kv.delete(chatIdKey);
-
-      reportEvent("/logout");
-
-      return sendTgMessage("You've been logged out");
-    }
-
     //#region Command: /login
 
     if ((message.text as BotCommand) === "/login") {
@@ -208,9 +146,12 @@ Deno.serve(
         );
       }
 
-      await kv.set(chatIdKey, {
-        status: "awaiting_phone_no",
-      } satisfies KvValue);
+      await kv.set(
+        chatIdKey,
+        {
+          status: "awaiting_phone_no",
+        } satisfies KvValue,
+      );
 
       return sendTgMessage(
         "Enter your Truecaller account phone no. in international (+19...) format:",
@@ -247,11 +188,14 @@ Deno.serve(
         return sendTgMessage(responseBody.message);
       }
 
-      await kv.set(chatIdKey, {
-        status: "awaiting_otp",
-        phoneNumber,
-        loginResponse: responseBody,
-      } satisfies KvValue);
+      await kv.set(
+        chatIdKey,
+        {
+          status: "awaiting_otp",
+          phoneNumber,
+          loginResponse: responseBody,
+        } satisfies KvValue,
+      );
 
       return sendTgMessage("Enter the OTP from SMS or WhatsApp:");
     }
@@ -285,11 +229,14 @@ Deno.serve(
         );
       }
 
-      await kv.set(chatIdKey, {
-        status: "logged_in",
-        installationId: otpResponse.installationId as string,
-        countryCode: kvValue.loginResponse.parsedCountryCode,
-      } satisfies KvValue);
+      await kv.set(
+        chatIdKey,
+        {
+          status: "logged_in",
+          installationId: otpResponse.installationId as string,
+          countryCode: kvValue.loginResponse.parsedCountryCode,
+        } satisfies KvValue,
+      );
 
       reportEvent("/login");
 
@@ -299,6 +246,80 @@ Deno.serve(
     }
 
     //#endregion /login
+
+    //#region Command: /installation_id
+
+    if ((message.text as BotCommand) === "/installation_id") {
+      if (kvValue.status === "logged_in") {
+        return sendTgMessage(
+          "You are already logged in.\n/logout first and then try again.",
+        );
+      }
+
+      await kv.set(
+        chatIdKey,
+        {
+          status: "awaiting_installation_id",
+        } satisfies KvValue,
+      );
+
+      return sendTgMessage(
+        "_installation\\_id_ is the final auth token generated after a successful truecaller login\\.\n\nIf you know how to retrieve it from an already logged in device, you can directly set it here without going through the login process again\\.\n\nEnter the installation ID:",
+        true,
+      );
+    }
+
+    if (
+      kvValue.status === "awaiting_installation_id" &&
+      !message.text.startsWith("/")
+    ) {
+      const installationId = message.text;
+
+      await kv.set(
+        chatIdKey,
+        {
+          status: "awaiting_country_code",
+          installationId,
+        } satisfies KvValue,
+      );
+
+      reportEvent("/installation_id");
+
+      return sendTgMessage(
+        "Enter your phone number's 2\\-letter [ISO country code](https://en.wikipedia.org/wiki/List_of_ISO_3166_country_codes):",
+        true,
+      );
+    }
+
+    if (
+      kvValue.status === "awaiting_country_code" &&
+      !message.text.startsWith("/")
+    ) {
+      const countryCode = message.text;
+
+      await kv.set(
+        chatIdKey,
+        {
+          status: "logged_in",
+          installationId: kvValue.installationId,
+          countryCode,
+        } satisfies KvValue,
+      );
+
+      return sendTgMessage(
+        "Successfully logged in to Truecaller.\nYou can now search any number.",
+      );
+    }
+
+    //#endregion /installation_id
+
+    if ((message.text as BotCommand) === "/logout") {
+      await kv.delete(chatIdKey);
+
+      reportEvent("/logout");
+
+      return sendTgMessage("You've been logged out");
+    }
 
     if (kvValue.status !== "logged_in") {
       return sendTgMessage("Please /login first before searching for a number");
@@ -317,8 +338,8 @@ Deno.serve(
     if (searchResult.json() instanceof Error) {
       // deno-lint-ignore no-explicit-any
       const error = searchResult.json() as any;
-      const { status = "", message: apiMessage = "" } =
-        error.response?.data ?? {};
+      const { status = "", message: apiMessage = "" } = error.response?.data ??
+        {};
 
       if (status === 40101 || status === 42601) {
         return sendTgMessage(
@@ -338,13 +359,15 @@ Deno.serve(
 
 function sendTgMessage(text: string, formatted = false) {
   return new Response(
-    JSON.stringify({
-      method: "sendMessage",
-      chat_id: tgChatId!,
-      parse_mode: formatted ? "MarkdownV2" : undefined,
-      disable_web_page_preview: true,
-      text,
-    } satisfies BotParams<"sendMessage">),
+    JSON.stringify(
+      {
+        method: "sendMessage",
+        chat_id: tgChatId!,
+        parse_mode: formatted ? "MarkdownV2" : undefined,
+        link_preview_options: { is_disabled: true },
+        text,
+      } satisfies BotParams<"sendMessage">,
+    ),
     {
       headers: {
         "Content-Type": "application/json",
@@ -355,9 +378,11 @@ function sendTgMessage(text: string, formatted = false) {
 
 function sendTypingIndicator(): void {
   fetch(
-    `https://api.telegram.org/bot${Deno.env.get(
-      "TG_THIS_BOT_TOKEN",
-    )}/sendChatAction`,
+    `https://api.telegram.org/bot${
+      Deno.env.get(
+        "TG_THIS_BOT_TOKEN",
+      )
+    }/sendChatAction`,
     {
       method: "POST",
       headers: {
@@ -391,7 +416,8 @@ function reportError(error: Error): void {
     const requestData = JSON.stringify(config.data ?? {}, null, 2);
     const responseData = JSON.stringify(data, null, 2);
 
-    details = `url: ${url}\n\nparams: ${params}\n\nreq_data: ${requestData}\n\nres_data: ${responseData}`;
+    details =
+      `url: ${url}\n\nparams: ${params}\n\nreq_data: ${requestData}\n\nres_data: ${responseData}`;
   } else {
     details = `${error.stack}`;
   }
@@ -403,9 +429,11 @@ function reportError(error: Error): void {
     .replaceAll("`", "\\`");
 
   fetch(
-    `https://api.telegram.org/bot${Deno.env.get(
-      "TG_THIS_BOT_TOKEN",
-    )}/sendMessage`,
+    `https://api.telegram.org/bot${
+      Deno.env.get(
+        "TG_THIS_BOT_TOKEN",
+      )
+    }/sendMessage`,
     {
       method: "POST",
       headers: {
@@ -420,7 +448,7 @@ function reportError(error: Error): void {
   ).catch(console.error);
 }
 
-function reportEvent(eventName: BotCommand): void {
+function reportEvent(eventName: BotCommand) {
   const EVENT_PING_URL = Deno.env.get("EVENT_PING_URL");
   const EVENT_PING_PROJECT_ID = Deno.env.get("EVENT_PING_PROJECT_ID");
 
@@ -429,7 +457,7 @@ function reportEvent(eventName: BotCommand): void {
     return;
   }
 
-  fetch(EVENT_PING_URL, {
+  return fetch(EVENT_PING_URL, {
     method: "POST",
     headers: {
       "User-Agent": "telegram (truecallerjs;)",
@@ -438,7 +466,7 @@ function reportEvent(eventName: BotCommand): void {
     body: JSON.stringify({
       type: "event",
       payload: {
-        website: Deno.env.get("EVENT_PING_PROJECT_ID"),
+        website: EVENT_PING_PROJECT_ID,
         url: eventName,
       },
     }),
