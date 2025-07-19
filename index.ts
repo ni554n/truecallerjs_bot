@@ -154,7 +154,7 @@ Deno.serve(
       );
 
       return sendTgMessage(
-        "Enter your Truecaller account phone no. in international (+19...) format:",
+        "Enter your (non-EU) Truecaller account phone number in international (+19...) format:",
       );
     }
 
