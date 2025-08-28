@@ -2,13 +2,20 @@ import type {
   ApiMethods,
   Opts,
   Update,
-} from "https://deno.land/x/grammy_types@v3.21.0/mod.ts";
+} from "https://deno.land/x/grammy_types@v3.22.1/mod.ts";
+import * as Sentry from "npm:@sentry/deno@10.5.0";
 import {
   login,
   type LoginResponse,
   search,
   verifyOtp,
 } from "npm:truecallerjs@2.2.0";
+
+const SENTRY_DSN = Deno.env.get("SENTRY_DSN")
+
+if (SENTRY_DSN) {
+  Sentry.init({ dsn: SENTRY_DSN });
+}
 
 type BotParams<METHOD extends keyof ApiMethods<unknown>> =
   & Opts<unknown>[METHOD]
@@ -38,21 +45,51 @@ Deno.serve(
     onError(error: any): Response {
       let message: string | undefined;
 
-      if (error?.name === "AxiosError" && "response" in error) {
-        message = error?.response?.data?.message ||
-          "Try again with a valid number.";
-      } else {
-        const reason = error instanceof Error
-          ? `\nReason: ${error.message}`
-          : "";
+      // https://github.com/sumithemmadi/truecallerjs/blob/a9259f85d828e0fbe16b6adf6f1142ae6d0d5aa5/src/login.ts#L60C22-L60C43
+      if (error.message === "Invalid phone number.") {
+        message = error.message;
+      } else if (error.isAxiosError && "response" in error) {
+        // https://github.com/axios/axios/blob/e7b7253f876a5e55d5cc39ef37d15d6d72ec6a5b/index.d.ts#L396
+        const status: number = error.response.data.status ??
+          error.response.status;
 
-        message =
-          `Internal server error!${reason}\nIt's been reported and will be fixed if possible.`;
+        switch (status) {
+          case 400:
+            // During number search
+            message =
+              "Invalid phone number. \n\nMake sure number is in proper international format.";
+            break;
+          case 40003:
+            // During OTP request
+            message =
+              "Invalid phone number. \n\nCheck if you can login to Truecaller website/app first. If it still doesn't work, unfortunately, this bot will not work for you.";
+            break;
+          case 40101:
+            message =
+              // During token verification or when number is not associated with a Truecaller account
+              "Invalid token or login credentials. Check if you can login to Truecaller website/app first.";
+            break;
+          case 429: {
+            const timeoutSeconds: number = error.response.data.timeoutSeconds ??
+              0;
+            message =
+              `Too many requests.\n\nTruecaller gave you a timeout for ${timeoutSeconds} seconds. Next time try to limit to a few requests per minute.`;
+            break;
+          }
+          case 45101:
+            message =
+              "Unavailable for legal reasons. Try with a non-EU account.";
+            break;
+        }
       }
 
-      reportError(error);
+      if (!message) {
+        message =
+          "Internal server error!\nIt's been reported and will be fixed if possible.";
+        reportErrorToSentry(error);
+      }
 
-      return message ? sendTgMessage(message) : new Response();
+      return sendTgMessage(message);
     },
   },
   async (request: Request) => {
@@ -407,56 +444,19 @@ function sendTypingIndicator(): void {
   ).catch(console.error);
 }
 
-// Completely optional. Just for me to error logging and debugging.
-function reportError(error: Error): void {
-  const TG_REPORT_CHANNEL_ID = Deno.env.get("TG_REPORT_CHANNEL_ID");
+/** Optional error reporting to Sentry.io. */
+function reportErrorToSentry(error: Error): void {
+  if (!SENTRY_DSN) {
+    console.warn(
+      "Optional env var 'SENTRY_DSN' is not set. Skipping error reporting.",
+    );
 
-  if (!TG_REPORT_CHANNEL_ID) {
-    console.warn("Optional env var 'TG_REPORT_CHANNEL_ID' is not set.");
     return;
   }
 
-  let details: string;
-
-  if (error.name === "AxiosError" && "response" in error) {
-    // deno-lint-ignore no-explicit-any
-    const { config = {}, data = {} } = error.response as any;
-
-    const url = config.url ?? "";
-    const params = JSON.stringify(config.params ?? {}, null, 2);
-    const requestData = JSON.stringify(config.data ?? {}, null, 2);
-    const responseData = JSON.stringify(data, null, 2);
-
-    details =
-      `url: ${url}\n\nparams: ${params}\n\nreq_data: ${requestData}\n\nres_data: ${responseData}`;
-  } else {
-    details = `${error.stack}`;
-  }
-
-  // Telegram formatting rule:
-  // https://core.telegram.org/bots/api#markdownv2-style
-  details = `${tgChatId}: ${error.message}\n\n${details}`
-    .replaceAll("\\", "\\\\")
-    .replaceAll("`", "\\`");
-
-  fetch(
-    `https://api.telegram.org/bot${
-      Deno.env.get(
-        "TG_THIS_BOT_TOKEN",
-      )
-    }/sendMessage`,
-    {
-      method: "POST",
-      headers: {
-        "Content-Type": "application/json",
-      },
-      body: JSON.stringify({
-        chat_id: TG_REPORT_CHANNEL_ID,
-        parse_mode: "MarkdownV2",
-        text: `${"```"}\n${details}\n${"```"}`,
-      }),
-    },
-  ).catch(console.error);
+  Sentry.captureException(error, {
+    user: { id: tgChatId },
+  });
 }
 
 /** Optional event reporting to an umami.is instance. */
@@ -484,5 +484,5 @@ function reportEvent(eventName: BotCommand) {
         url: eventName,
       },
     }),
-  }).catch(reportError);
+  }).catch(reportErrorToSentry);
 }
