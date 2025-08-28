@@ -110,7 +110,7 @@ Deno.serve(
       if (kvValue.status === "logged_out") reportEvent("/start");
 
       return sendTgMessage(
-        "You need to /login to Truecaller with your existing account to use the bot.\nOnly you will be using your own account to search the numbers.",
+        "You need to /login to Truecaller with your existing non-EU account to use the bot.\nOnly you will be using your own account to search the numbers.",
       );
     }
 
@@ -296,6 +296,11 @@ Deno.serve(
       !message.text.startsWith("/")
     ) {
       const countryCode = message.text;
+      if (countryCode.length !== 2) {
+        return sendTgMessage(
+          "Invalid country code. It should be a 2-letter ISO code like 'IN' for India, 'US' for the USA, etc.",
+        );
+      }
 
       await kv.set(
         chatIdKey,
@@ -357,13 +362,19 @@ Deno.serve(
   },
 );
 
-function sendTgMessage(text: string, formatted = false) {
+/**
+ * Sends a message to a telegram bot.
+ *
+ * Don't forget to escape the text if MarkdownV2 formatting is enabled.
+ * Escaping Rules: https://core.telegram.org/bots/api#markdownv2-style
+ */
+function sendTgMessage(text: string, markdownFormatted = false) {
   return new Response(
     JSON.stringify(
       {
         method: "sendMessage",
         chat_id: tgChatId!,
-        parse_mode: formatted ? "MarkdownV2" : undefined,
+        parse_mode: markdownFormatted ? "MarkdownV2" : undefined,
         link_preview_options: { is_disabled: true },
         text,
       } satisfies BotParams<"sendMessage">,
@@ -448,12 +459,15 @@ function reportError(error: Error): void {
   ).catch(console.error);
 }
 
+/** Optional event reporting to an umami.is instance. */
 function reportEvent(eventName: BotCommand) {
   const EVENT_PING_URL = Deno.env.get("EVENT_PING_URL");
   const EVENT_PING_PROJECT_ID = Deno.env.get("EVENT_PING_PROJECT_ID");
 
   if (!(EVENT_PING_URL && EVENT_PING_PROJECT_ID)) {
-    console.warn("Optional env vars 'EVENT_PING_*' are not set.");
+    console.warn(
+      "EVENT_PING_* env vars are not set. Skipping event reporting.",
+    );
     return;
   }
 
