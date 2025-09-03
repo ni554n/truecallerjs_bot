@@ -11,10 +11,10 @@ import {
   verifyOtp,
 } from "npm:truecallerjs@2.2.0";
 
-const SENTRY_DSN = Deno.env.get("SENTRY_DSN")
+const SENTRY_DSN = Deno.env.get("SENTRY_DSN");
 
 if (SENTRY_DSN) {
-  Sentry.init({ dsn: SENTRY_DSN });
+  Sentry.init({ dsn: SENTRY_DSN, normalizeDepth: 32 });
 }
 
 type BotParams<METHOD extends keyof ApiMethods<unknown>> =
@@ -445,7 +445,8 @@ function sendTypingIndicator(): void {
 }
 
 /** Optional error reporting to Sentry.io. */
-function reportErrorToSentry(error: Error): void {
+// deno-lint-ignore no-explicit-any
+function reportErrorToSentry(error: any): void {
   if (!SENTRY_DSN) {
     console.warn(
       "Optional env var 'SENTRY_DSN' is not set. Skipping error reporting.",
@@ -456,6 +457,11 @@ function reportErrorToSentry(error: Error): void {
 
   Sentry.captureException(error, {
     user: { id: tgChatId },
+    contexts: {
+      "error_json": error.name === "AxiosError"
+        ? error.toJSON()
+        : JSON.stringify(error, Object.getOwnPropertyNames(error)),
+    },
   });
 }
 
