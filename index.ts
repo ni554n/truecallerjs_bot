@@ -80,6 +80,7 @@ Deno.serve(
             message =
               "Unavailable for legal reasons. Try with a non-EU account.";
             break;
+          case 500:
           case 503:
             message =
               "Truecaller service is down. Please try again a bit later.";
