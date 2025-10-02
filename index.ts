@@ -375,7 +375,7 @@ Deno.serve(
     const searchData = {
       number: message.text,
       countryCode: kvValue.countryCode,
-      installationId: kvValue.installationId,
+      installationId: kvValue.installationId.trim(),
     };
 
     const searchResult = await search(searchData);
