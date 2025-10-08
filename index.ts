@@ -375,7 +375,9 @@ Deno.serve(
     const searchData = {
       number: message.text,
       countryCode: kvValue.countryCode,
-      installationId: kvValue.installationId.trim(),
+      // deno-lint-ignore no-control-regex
+      installationId: kvValue.installationId.replace(/[\x00-\x1F\x7F]/g, "")
+        .trim(),
     };
 
     const searchResult = await search(searchData);
